@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego Educativo - Culturas Prehispánicas</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .heart-beat { animation: heartbeat 1.5s infinite; }
+        @keyframes heartbeat { 
+            0% { transform: scale(1); } 
+            15% { transform: scale(1.2); } 
+            30% { transform: scale(1); } 
+            45% { transform: scale(1.2); } 
+            60% { transform: scale(1); } 
+        }
+        .heart-lost { filter: grayscale(100%); opacity: 0.3; animation: none; }
+        
+        .feedback-pop { 
+            animation: popIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; 
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+
+        #custom-notification {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(-20px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        #custom-notification.show {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<!-- Paleta de colores terracota/café en el fondo -->
+<body class="bg-gradient-to-br from-amber-950 via-orange-900 to-yellow-900 min-h-screen text-white flex items-center justify-center p-4">
+
+    <!-- Notificación Custom -->
+    <div id="custom-notification" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-xl shadow-2xl font-bold flex items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        <span id="notification-msg">Mensaje de error</span>
+        <button onclick="hideNotification()" class="ml-4 text-white hover:text-red-200">✖</button>
+    </div>
+
+    <!-- Feedback visual animado -->
+    <div id="feedback-overlay" class="fixed inset-0 flex items-center justify-center pointer-events-none z-50 hidden">
+        <h2 id="feedback-text" class="text-5xl md:text-7xl font-black text-yellow-400 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] text-center tracking-wider"></h2>
+    </div>
+
+    <!-- Contenedor principal con fondo beige/crema claro -->
+    <div class="max-w-3xl w-full bg-stone-50 text-stone-800 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden fade-in relative">
+        
+        <!-- Header terracota -->
+        <header class="bg-orange-800 text-white p-6 text-center shadow-md relative z-10">
+            <h1 class="text-3xl font-extrabold tracking-tight">I.E. Santísima Niña María</h1>
+            <p class="text-orange-200 font-semibold mt-1 text-lg">Ciencias Sociales - Secundaria</p>
+            <div class="inline-block bg-yellow-500 text-yellow-950 px-4 py-1 rounded-full font-bold mt-3 text-sm uppercase tracking-wide shadow-sm">
+                Tema: Culturas Prehispánicas
+            </div>
+        </header>
+
+        <!-- PANTALLA DE REGISTRO -->
+        <div id="screen-register" class="p-8">
+            <h2 class="text-2xl font-bold text-center mb-6 text-amber-900">¡Bienvenido al Reto Histórico!</h2>
+            <p class="text-center text-stone-600 mb-8">Identifica tus datos para demostrar cuánto sabes de nuestro pasado andino.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-sm font-semibold text-amber-900 mb-2">Grado</label>
+                    <select id="sel-grado" class="w-full p-3 border-2 border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white outline-none transition">
+                        <option value="">Selecciona tu grado</option>
+                        <option value="4">4to Secundaria</option>
+                        <option value="5">5to Secundaria</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-amber-900 mb-2">Sección</label>
+                    <select id="sel-seccion" class="w-full p-3 border-2 border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white outline-none transition">
+                        <option value="">Selecciona tu sección</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <button id="btn-buscar-alumnas" class="w-full bg-orange-700 hover:bg-orange-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition transform hover:-translate-y-1">
+                    Buscar mi nombre
+                </button>
+            </div>
+
+            <div id="container-nombre" class="hidden fade-in">
+                <label class="block text-sm font-semibold text-amber-900 mb-2">Tu Nombre</label>
+                <select id="sel-nombre" class="w-full p-3 border-2 border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white outline-none transition mb-6">
+                    <option value="">Selecciona tu nombre</option>
+                </select>
+
+                <button id="btn-iniciar" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-lg transition transform hover:-translate-y-1">
+                    ¡Comenzar la Aventura!
+                </button>
+            </div>
+            
+            <div id="loading-msg" class="hidden text-center text-orange-600 font-semibold mt-4">Consultando la base de datos...</div>
+
+            <!-- FIRMA DEL DOCENTE -->
+            <div class="mt-8 pt-4 border-t-2 border-stone-200 text-center text-sm text-stone-500">
+                Elaborado por: <span class="font-bold text-amber-900">Idalia Tellería Vargas</span>
+            </div>
+        </div>
+
+        <!-- PANTALLA DE JUEGO -->
+        <div id="screen-game" class="hidden p-8 fade-in relative">
+            
+            <div class="w-full bg-stone-300 rounded-full h-4 mb-6 relative overflow-hidden shadow-inner border border-stone-400">
+                <div id="timer-bar" class="bg-orange-500 h-4 rounded-full transition-all duration-1000 ease-linear" style="width: 100%"></div>
+                <div class="absolute inset-0 flex items-center justify-center text-xs font-bold text-stone-900" style="text-shadow: 0 0 2px rgba(255,255,255,0.8);" id="timer-text">20s</div>
+            </div>
+
+            <div class="flex justify-between items-center mb-6 bg-orange-100 p-4 rounded-2xl border border-orange-200">
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-orange-900">Vidas:</span>
+                    <div id="lives-container" class="flex gap-1 text-red-600 text-2xl">
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="font-bold text-orange-900">Puntos:</span>
+                    <span id="score-display" class="text-2xl font-black text-amber-700">0</span>
+                </div>
+            </div>
+
+            <div class="mb-8 text-center">
+                <span id="question-number" class="text-sm font-bold text-amber-600 uppercase tracking-wider">Pregunta 1</span>
+                <h3 id="question-text" class="text-xl md:text-2xl font-bold text-stone-800 mt-2">¿Cargando pregunta...?</h3>
+            </div>
+
+            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Opciones dinámicas -->
+            </div>
+        </div>
+
+        <!-- PANTALLA DE RESULTADOS -->
+        <div id="screen-results" class="hidden p-8 text-center fade-in">
+            <h2 id="end-title" class="text-3xl font-extrabold mb-4 text-orange-800">¡Reto Finalizado!</h2>
+            <p class="text-stone-700 text-lg mb-6" id="end-message">Veamos cómo te fue con la historia del Perú.</p>
+            
+            <div class="bg-orange-100 border-4 border-orange-500 rounded-3xl p-6 inline-block mb-8 shadow-lg">
+                <p class="text-sm text-orange-800 font-bold uppercase tracking-widest">Puntaje Final</p>
+                <p id="final-score" class="text-6xl font-black text-amber-700">0</p>
+            </div>
+
+            <h3 class="text-xl font-bold text-stone-800 mb-4">🏆 Mejores Historiadores 🏆</h3>
+            <div class="bg-white rounded-xl border border-orange-200 p-4 max-h-64 overflow-y-auto mb-6 text-left shadow-inner">
+                <ul id="ranking-list" class="divide-y divide-orange-100">
+                    <li class="py-2 text-center text-stone-500">Cargando ranking...</li>
+                </ul>
+            </div>
+
+            <button onclick="location.reload()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition transform hover:-translate-y-1">
+                Volver a Jugar
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // === COMUNICACIÓN CON GOOGLE SHEETS ===
+        // TODO: Pega aquí la URL pública de tu Apps Script
+        const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbxG5AT2oOec61u8czBU-AnhEILYGklu6i1lHlYL2nmauEcZg9hqT4UBDqUzX2HNF33i/exec"; 
+
+        // === BANCO DE PREGUNTAS (Basado en el PDF de Culturas Prehispánicas) ===
+        const questionBank = [
+            // Dificultad Fácil (7 preguntas)
+            { q: "¿A qué etapa de la historia se le denomina 'prehispánica'?", options: ["Antes de la llegada de los incas", "Antes de la llegada de los españoles en el siglo XVI", "Durante la época colonial", "Después de la independencia"], answer: 1 },
+            { q: "¿Qué sociedad de la costa norcentral es considerada uno de los centros urbanos más antiguos de América (3000-1800 a. C.)?", options: ["Wari", "Chavín", "Caral", "Moche"], answer: 2 },
+            { q: "¿Qué gran ciudad de barro amurallada fue la capital política de la cultura Chimú?", options: ["Kuélap", "Chan Chan", "Cusco", "Pikillacta"], answer: 1 },
+            { q: "¿Qué cultura destacó por sus misteriosas líneas y geoglifos trazados en las pampas del sur?", options: ["Nazca", "Paracas", "Lima", "Recuay"], answer: 0 },
+            { q: "¿Cómo se llamó el sistema andino de cuerdas y nudos utilizado intensamente por los incas para registrar información?", options: ["Geoglifo", "Puquio", "Quipu", "Suyo"], answer: 2 },
+            { q: "¿Qué era un 'ayllu' en la organización andina?", options: ["Un arma de guerra de piedra", "Una técnica agrícola para las montañas", "Un recinto para guardar ofrendas", "Una comunidad de parentesco y cooperación"], answer: 3 },
+            { q: "¿Qué cultura de la costa sur es mundialmente famosa por la extraordinaria calidad de sus textiles y fardos funerarios?", options: ["Chachapoyas", "Paracas", "Recuay", "Chincha"], answer: 1 },
+            
+            // Dificultad Intermedia (8 preguntas)
+            { q: "La diferencia principal entre un 'Horizonte' y un 'Periodo Intermedio' es que:", options: ["El Horizonte comparte rasgos en amplias regiones; el Intermedio muestra diversidad regional", "El Horizonte es costeño y el Intermedio andino", "El Horizonte fue antes de Cristo y el Intermedio después", "El Horizonte es el territorio inca y el Intermedio el español"], answer: 0 },
+            { q: "¿En qué importante cultura de la costa norte destacaron centros políticos y ceremoniales como las Huacas del Sol y de la Luna?", options: ["Lambayeque", "Chimú", "Moche", "Caral"], answer: 2 },
+            { q: "¿Qué técnica usó la cultura Tiahuanaco para manejar el agua y proteger sus cultivos de las heladas en el altiplano?", options: ["Puquios o acueductos subterráneos", "Galerías interiores", "Sukakollos o campos elevados (waru waru)", "Sarcófagos de piedra"], answer: 2 },
+            { q: "¿Cuál de estas culturas organizó una extensa red de asentamientos, caminos y administración con centro principal en Ayacucho (600-1000 d. C.)?", options: ["Inca", "Wari", "Chavín", "Chincha"], answer: 1 },
+            { q: "La cultura Lambayeque o Sicán sobresalió enormemente en...", options: ["La metalurgia con objetos de oro, plata y cobre", "El diseño de andenes", "La escritura jeroglífica", "La momificación en cavernas"], answer: 0 },
+            { q: "¿Qué impresionante complejo arquitectónico de piedra construido en montañas elevadas pertenece a la sociedad Chachapoyas?", options: ["Pikillacta", "Batán Grande", "Kuélap", "Túcume"], answer: 2 },
+            { q: "El concepto incaico de 'reciprocidad' consistía en:", options: ["El pago de impuestos con monedas", "El almacenamiento de bienes exclusivos para la nobleza", "El intercambio de trabajo y ayuda entre personas y comunidades", "El dominio de los pueblos mediante la guerra"], answer: 2 },
+            { q: "¿Qué sociedad de la costa sur (1000-1470 d. C.) destacó notablemente por sus redes comerciales y navegación?", options: ["Lima", "Chincha", "Paracas", "Nazca"], answer: 1 },
+            
+            // Dificultad Avanzada (7 preguntas)
+            { q: "¿Qué personaje mítico aparece frecuentemente en los relatos tradicionales asociados al origen de la cultura Lambayeque/Sicán?", options: ["Manco Cápac", "El Dios de los Báculos", "Naylamp", "El Lanzón"], answer: 2 },
+            { q: "Sobre Chavín, las investigaciones arqueológicas actuales sugieren que:", options: ["Conquistó militarmente a todo el Perú bajo un Estado central", "Su influencia religiosa y simbólica fue inmensa, pero no necesariamente formó un Estado que controlara todo", "Fue una sociedad sin agricultura", "Solo destacó en metalurgia y no en piedra"], answer: 1 },
+            { q: "Según el material, ¿es correcto afirmar que Caral fue una sociedad estrictamente pescadora y sin agricultura?", options: ["Verdadero, sus tierras eran desiertos áridos", "Falso, combinaron la pesca con el cultivo de algodón y plantas alimenticias", "Verdadero, dependían únicamente del trueque de pescado", "Falso, su economía se basaba solo en la minería"], answer: 1 },
+            { q: "¿Cuál fue la función principal del sistema vial conocido como 'Qhapaq Ñan'?", options: ["Servir como acueducto subterráneo", "Conectar diversos territorios para facilitar la administración, circulación y comunicación del Estado inca", "Proteger la costa de tsunamis", "Evitar el contacto entre distintos señoríos"], answer: 1 },
+            { q: "Los 'puquios' desarrollados por los antiguos habitantes de Nazca fueron:", options: ["Terrazas agrícolas de piedra", "Plazas circulares hundidas", "Sistemas ingeniosos de captación y conducción de agua subterránea", "Mausoleos construidos en los acantilados"], answer: 2 },
+            { q: "¿Qué nos indican las evidencias arqueológicas de trepanaciones craneanas halladas en Paracas?", options: ["Que desarrollaron conocimientos médicos y prácticas sociales complejas para curar heridas", "Que era una sociedad que torturaba masivamente a sus enemigos", "Que ignoraban el uso de hierbas medicinales", "Que fue una moda estética sin función curativa"], answer: 0 },
+            { q: "¿Por qué es erróneo afirmar que la historia y cultura del antiguo Perú empezó exclusivamente con el Imperio Inca?", options: ["Porque antes hubo imperios más grandes que Roma en la selva", "Porque el Tahuantinsuyo integró poblaciones, tecnologías y tradiciones de sociedades que se desarrollaron milenios atrás", "Porque los incas no tuvieron ningún logro destacable", "Porque los españoles trajeron la agricultura"], answer: 1 }
+        ];
+
+        // === SISTEMA DE NOTIFICACIONES ===
+        let notificationTimeout;
+        function showNotification(message) {
+            const notif = document.getElementById('custom-notification');
+            document.getElementById('notification-msg').textContent = message;
+            notif.classList.add('show');
+            clearTimeout(notificationTimeout);
+            notificationTimeout = setTimeout(hideNotification, 4000);
+        }
+
+        function hideNotification() {
+            document.getElementById('custom-notification').classList.remove('show');
+        }
+
+        // === CONFIGURACIÓN DE AUDIO (TONE.JS) ===
+        const correctSynth = new Tone.PolySynth(Tone.Synth).toDestination();
+        const incorrectSynth = new Tone.Synth().toDestination();
+        
+        function playCorrectSound() {
+            if (Tone.context.state !== 'running') Tone.start();
+            const now = Tone.now();
+            correctSynth.triggerAttackRelease(["C4", "E4", "G4", "C5"], "8n", now);
+            correctSynth.volume.value = -10;
+        }
+
+        function playIncorrectSound() {
+            if (Tone.context.state !== 'running') Tone.start();
+            incorrectSynth.triggerAttackRelease("C2", "8n");
+            incorrectSynth.volume.value = -10;
+        }
+
+        // === SÍNTESIS DE VOZ ===
+        function speakQuestion(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                // Limpiar texto para evitar lectura de caracteres extraños
+                const cleanText = text.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s¿?,.]/g, '');
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                utterance.lang = 'es-ES'; 
+                utterance.rate = 1.05; 
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // === FEEDBACK VISUAL ===
+        const frasesCorrectas = ["¡EXCELENTE!", "¡MUY BIEN!", "¡CORRECTO!", "¡GRAN DATO!", "¡ERES GENIAL!"];
+        const frasesIncorrectas = ["¡PIENSA BIEN!", "¡CONCÉNTRATE!", "¡CUIDADO!", "¡CASI!", "¡REPASA!"];
+
+        function showFeedback(isCorrect) {
+            const overlay = document.getElementById('feedback-overlay');
+            const textEl = document.getElementById('feedback-text');
+            
+            const frases = isCorrect ? frasesCorrectas : frasesIncorrectas;
+            const fraseAzar = frases[Math.floor(Math.random() * frases.length)];
+            
+            textEl.textContent = fraseAzar;
+            textEl.className = `text-5xl md:text-7xl font-black drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] text-center tracking-wider feedback-pop ${isCorrect ? 'text-yellow-400' : 'text-red-500'}`;
+            
+            overlay.classList.remove('hidden');
+            
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                textEl.classList.remove('feedback-pop');
+            }, 1000); 
+        }
+
+        // === SERVER FETCH ===
+        const server = {
+            withSuccessHandler: function(callback) {
+                return {
+                    getStudents: function(grado, seccion) {
+                        fetch(`${GOOGLE_SHEETS_URL}?action=getStudents&grado=${grado}&seccion=${seccion}`)
+                            .then(response => response.json())
+                            .then(result => { 
+                                if (result.success) {
+                                    callback(result.data || []); 
+                                } else {
+                                    showNotification("Error: " + result.message, true);
+                                    callback([]);
+                                }
+                            })
+                            .catch(error => { 
+                                showNotification("Error de conexión al servidor.", true);
+                                console.error('Error:', error); 
+                                callback([]); 
+                            });
+                    },
+                    saveScore: async function(nombre, grado, seccion, puntaje) {
+                        let ipEstudiante = 'Desconocida';
+                        try {
+                            const res = await fetch('https://1.1.1.1/cdn-cgi/trace');
+                            const text = await res.text();
+                            const match = text.match(/ip=(.*)/);
+                            if (match && match[1]) ipEstudiante = match[1].trim();
+                        } catch (e) {
+                            try {
+                                const res2 = await fetch('https://api.ipify.org?format=json');
+                                const data = await res2.json();
+                                ipEstudiante = data.ip;
+                            } catch (e2) {}
+                        }
+
+                        fetch(`${GOOGLE_SHEETS_URL}?action=saveScore&nombre=${encodeURIComponent(nombre)}&grado=${grado}&seccion=${seccion}&puntaje=${puntaje}&ip=${ipEstudiante}`)
+                            .then(response => response.json())
+                            .then(result => { callback(); })
+                            .catch(error => { console.error('Error al guardar datos:', error); callback(); });
+                    },
+                    getRanking: function() {
+                        fetch(`${GOOGLE_SHEETS_URL}?action=getRanking`)
+                            .then(response => response.json())
+                            .then(result => { callback(result.data || []); })
+                            .catch(error => { console.error('Error:', error); callback([]); });
+                    }
+                };
+            }
+        };
+
+        // === LÓGICA DEL JUEGO ===
+        let currentQuestions = [];
+        let currentIndex = 0;
+        let lives = 5;
+        let score = 0;
+        let studentData = { nombre: '', grado: '', seccion: '' };
+        
+        let timeLeft = 20;
+        let timerInterval = null;
+
+        const screens = {
+            register: document.getElementById('screen-register'),
+            game: document.getElementById('screen-game'),
+            results: document.getElementById('screen-results')
+        };
+        
+        const elements = {
+            selGrado: document.getElementById('sel-grado'),
+            selSeccion: document.getElementById('sel-seccion'),
+            btnBuscar: document.getElementById('btn-buscar-alumnas'),
+            containerNombre: document.getElementById('container-nombre'),
+            selNombre: document.getElementById('sel-nombre'),
+            btnIniciar: document.getElementById('btn-iniciar'),
+            loadingMsg: document.getElementById('loading-msg'),
+            
+            livesContainer: document.getElementById('lives-container'),
+            scoreDisplay: document.getElementById('score-display'),
+            questionNumber: document.getElementById('question-number'),
+            questionText: document.getElementById('question-text'),
+            optionsContainer: document.getElementById('options-container'),
+            timerBar: document.getElementById('timer-bar'),
+            timerText: document.getElementById('timer-text'),
+            
+            finalScore: document.getElementById('final-score'),
+            rankingList: document.getElementById('ranking-list'),
+            endTitle: document.getElementById('end-title'),
+            endMessage: document.getElementById('end-message')
+        };
+
+        function showScreen(screenName) {
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            screens[screenName].classList.remove('hidden');
+        }
+
+        elements.btnBuscar.addEventListener('click', () => {
+            const grado = elements.selGrado.value;
+            const seccion = elements.selSeccion.value;
+            
+            if (!grado || !seccion) {
+                showNotification('Por favor selecciona tu grado y sección.');
+                return;
+            }
+
+            elements.loadingMsg.classList.remove('hidden');
+            elements.btnBuscar.disabled = true;
+            elements.btnBuscar.classList.add('opacity-50', 'cursor-not-allowed');
+
+            server.withSuccessHandler((alumnas) => {
+                elements.loadingMsg.classList.add('hidden');
+                elements.btnBuscar.disabled = false;
+                elements.btnBuscar.classList.remove('opacity-50', 'cursor-not-allowed');
+                
+                elements.selNombre.innerHTML = '<option value="">Selecciona tu nombre</option>';
+                if (alumnas && alumnas.length > 0) {
+                    alumnas.forEach(alumna => {
+                        const opt = document.createElement('option');
+                        opt.value = alumna;
+                        opt.textContent = alumna;
+                        elements.selNombre.appendChild(opt);
+                    });
+                    elements.containerNombre.classList.remove('hidden');
+                } else {
+                    showNotification('No se encontraron estudiantes para este grado y sección en la base de datos.');
+                }
+            }).getStudents(grado, seccion);
+        });
+
+        elements.btnIniciar.addEventListener('click', () => {
+            const nombre = elements.selNombre.value;
+            if (!nombre) {
+                showNotification("Selecciona tu nombre de la lista para continuar.");
+                return;
+            }
+            
+            studentData = { nombre: nombre, grado: elements.selGrado.value, seccion: elements.selSeccion.value };
+            startGame();
+        });
+
+        function startGame() {
+            if(Tone.context.state !== 'running') Tone.start();
+
+            // Mezclar preguntas aleatoriamente
+            currentQuestions = [...questionBank].sort(() => Math.random() - 0.5);
+            currentIndex = 0;
+            lives = 5;
+            score = 0;
+            
+            updateLivesUI();
+            updateScoreUI();
+            showScreen('game');
+            loadQuestion();
+        }
+
+        const corazonSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="heart-beat"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+
+        function updateLivesUI() {
+            elements.livesContainer.innerHTML = '';
+            for(let i=0; i<5; i++) {
+                const heart = document.createElement('div');
+                heart.innerHTML = corazonSVG;
+                if(i >= lives) {
+                    heart.querySelector('svg').classList.remove('heart-beat');
+                    heart.querySelector('svg').classList.add('heart-lost');
+                }
+                elements.livesContainer.appendChild(heart);
+            }
+        }
+
+        function updateScoreUI() {
+            elements.scoreDisplay.textContent = score;
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeLeft = 20;
+            updateTimerUI();
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerUI();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeout();
+                }
+            }, 1000);
+        }
+
+        function updateTimerUI() {
+            const percentage = (timeLeft / 20) * 100;
+            elements.timerBar.style.width = `${percentage}%`;
+            elements.timerText.textContent = `${timeLeft}s`;
+            
+            if (timeLeft <= 5) elements.timerBar.classList.replace('bg-orange-500', 'bg-red-600');
+            else elements.timerBar.classList.replace('bg-red-600', 'bg-orange-500');
+        }
+
+        function handleTimeout() {
+            window.speechSynthesis.cancel();
+            playIncorrectSound();
+            showFeedback(false);
+            
+            const buttons = elements.optionsContainer.querySelectorAll('button');
+            buttons.forEach(b => b.disabled = true);
+            
+            const q = currentQuestions[currentIndex];
+            buttons[q.answer].classList.add('border-amber-500', 'bg-orange-200');
+            
+            lives--;
+            updateLivesUI();
+            
+            setTimeout(() => {
+                if (lives <= 0) endGame(false);
+                else { currentIndex++; loadQuestion(); }
+            }, 2000);
+        }
+
+        function loadQuestion() {
+            if (currentIndex >= currentQuestions.length) {
+                endGame(true);
+                return;
+            }
+
+            const q = currentQuestions[currentIndex];
+            elements.questionNumber.textContent = `Pregunta ${currentIndex + 1} de ${currentQuestions.length}`;
+            elements.questionText.textContent = q.q;
+            
+            elements.optionsContainer.innerHTML = '';
+            
+            q.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = "bg-white border-2 border-stone-300 text-stone-800 hover:border-amber-600 hover:bg-orange-50 font-semibold py-4 px-6 rounded-xl shadow-sm transition transform hover:-translate-y-1 text-left w-full";
+                btn.textContent = opt;
+                btn.onclick = () => checkAnswer(index, btn);
+                elements.optionsContainer.appendChild(btn);
+            });
+            
+            startTimer();
+            speakQuestion(q.q);
+        }
+
+        function checkAnswer(selectedIndex, btnElement) {
+            clearInterval(timerInterval);
+            window.speechSynthesis.cancel();
+
+            const buttons = elements.optionsContainer.querySelectorAll('button');
+            buttons.forEach(b => b.disabled = true);
+
+            const q = currentQuestions[currentIndex];
+            const isCorrect = (selectedIndex === q.answer);
+
+            if (isCorrect) {
+                playCorrectSound();
+                showFeedback(true);
+                btnElement.classList.replace('border-stone-300', 'border-amber-600');
+                btnElement.classList.replace('bg-white', 'bg-amber-600');
+                btnElement.classList.replace('text-stone-800', 'text-white');
+                score += 10;
+                updateScoreUI();
+            } else {
+                playIncorrectSound();
+                showFeedback(false);
+                btnElement.classList.replace('border-stone-300', 'border-red-600');
+                btnElement.classList.replace('bg-white', 'bg-red-600');
+                btnElement.classList.replace('text-stone-800', 'text-white');
+                
+                // Resaltar la respuesta correcta
+                buttons[q.answer].classList.replace('border-stone-300', 'border-amber-500');
+                buttons[q.answer].classList.replace('bg-white', 'bg-orange-200');
+                
+                lives--;
+                updateLivesUI();
+            }
+
+            setTimeout(() => {
+                if (lives <= 0) endGame(false);
+                else { currentIndex++; loadQuestion(); }
+            }, 2000);
+        }
+
+        function endGame(won) {
+            clearInterval(timerInterval);
+            window.speechSynthesis.cancel();
+            showScreen('results');
+            elements.finalScore.textContent = score;
+            
+            if(won) {
+                elements.endTitle.textContent = "¡Felicidades, completaste todo el cuestionario!";
+                elements.endTitle.className = "text-3xl font-extrabold mb-4 text-amber-700";
+                elements.endMessage.textContent = "Has demostrado un excelente dominio de las culturas prehispánicas.";
+            } else {
+                elements.endTitle.textContent = "¡Se acabaron tus vidas!";
+                elements.endTitle.className = "text-3xl font-extrabold mb-4 text-red-600";
+                elements.endMessage.textContent = "Repasa el material de clase y vuelve a intentarlo.";
+            }
+
+            elements.rankingList.innerHTML = '<li class="py-2 text-center text-stone-500">Guardando tu puntaje de manera segura...</li>';
+            
+            server.withSuccessHandler(() => {
+                loadRanking();
+            }).saveScore(studentData.nombre, studentData.grado, studentData.seccion, score);
+        }
+
+        function loadRanking() {
+            elements.rankingList.innerHTML = '<li class="py-2 text-center text-stone-500">Cargando el ranking histórico general...</li>';
+            
+            server.withSuccessHandler((ranking) => {
+                elements.rankingList.innerHTML = '';
+                if(ranking.length === 0) {
+                    elements.rankingList.innerHTML = '<li class="py-2 text-center text-stone-500">Aún no hay estudiantes en el ranking. ¡Sé el primero!</li>';
+                    return;
+                }
+                
+                ranking.forEach((r, index) => {
+                    const li = document.createElement('li');
+                    li.className = "py-3 flex justify-between items-center";
+                    
+                    let badgeColor = "bg-orange-100 text-orange-900";
+                    if(index === 0) badgeColor = "bg-yellow-400 text-yellow-900 shadow-md"; // Oro
+                    else if(index === 1) badgeColor = "bg-stone-300 text-stone-800 shadow-sm"; // Plata
+                    else if(index === 2) badgeColor = "bg-amber-600 text-white shadow-sm"; // Bronce (Terracota)
+                    
+                    li.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full ${badgeColor} flex items-center justify-center font-bold">${index + 1}</span>
+                            <div>
+                                <p class="font-bold text-stone-800">${r.nombre}</p>
+                                <p class="text-xs text-stone-500 font-semibold">${r.grado}° "${r.seccion}"</p>
+                            </div>
+                        </div>
+                        <div class="font-black text-amber-700 text-lg">${r.puntaje} pts</div>
+                    `;
+                    elements.rankingList.appendChild(li);
+                });
+            }).getRanking();
+        }
+    </script>
+</body>
+</html>
